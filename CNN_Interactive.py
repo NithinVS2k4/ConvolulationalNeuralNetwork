@@ -1,6 +1,6 @@
 import numpy as np
 
-from NeuralNetworks import *
+from ConvolutionalNeuralNetworks import *
 import pygame
 from PIL import Image
 
@@ -19,7 +19,6 @@ network = [
 
 
 def load_network_numpy(network, filename_prefix):
-    print('hi')
     for i, layer in enumerate(network):
         if isinstance(layer, Dense):
             layer.weights = np.load(f'{filename_prefix}_layer_{i}_weights.npy')
