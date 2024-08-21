@@ -1,36 +1,14 @@
 import matplotlib.pyplot as plt
-from NeuralNetworks import *
+from ConvolutionalNeuralNetworks import *
 from MNIST_DataLoader import MnistDataloader
 import time
 import keras._tf_keras.keras.datasets.mnist as mnist
-
-
-input_path = ''
-training_images_filepath = 'MNIST_HandwrittenDigits/train-images-idx3-ubyte/train-images-idx3-ubyte'
-training_labels_filepath = 'MNIST_HandwrittenDigits/train-labels-idx1-ubyte/train-labels-idx1-ubyte'
-test_images_filepath = 'MNIST_HandwrittenDigits/t10k-images-idx3-ubyte/t10k-images-idx3-ubyte'
-test_labels_filepath = 'MNIST_HandwrittenDigits/t10k-labels-idx1-ubyte/t10k-labels-idx1-ubyte'
 
 print("Loading...")
 
 start_time = time.time()
 
-load_npy_dataset = False
-if not load_npy_dataset:
-    # mnist_dataloader = MnistDataloader(training_images_filepath, training_labels_filepath, test_images_filepath, test_labels_filepath)
-    #
-    # train_and_save = True
-    #
-    # data_set = mnist_dataloader.load_data(load_train = train_and_save,augment=False, replace_set=True, num_of_copies=3)
-
-    (x_train, y_train), (x_test, y_test) = mnist.load_data()
-else:
-    #Augmented data with 3 180,000 training images
-    x_train = np.load('MNIST_HandwrittenDigits/x_train.npy')
-    y_train = np.load('MNIST_HandwrittenDigits/y_train.npy')
-    x_test = np.load('MNIST_HandwrittenDigits/x_test.npy')
-    y_test = np.load('MNIST_HandwrittenDigits/y_test.npy')
-end_time = time.time()
+(x_train, y_train), (x_test, y_test) = mnist.load_data()
 print(f"Time taken to load dataset : {end_time-start_time} seconds")
 network = [
     Convolutional((1, 28, 28), 3, 5),
@@ -44,6 +22,63 @@ network = [
     Dense(64, 2),
     Sigmoid()
 ]
+
+
+def preprocess_data(x, y, limit, ones_and_zeros):
+    if ones_and_zeros:
+        zero_index = np.where(y == 0)[0][:limit]
+        one_index = np.where(y == 1)[0][:limit]
+        all_indices = np.hstack((zero_index, one_index))
+        all_indices = np.random.permutation(all_indices)
+        x, y = x[all_indices], y[all_indices]
+    else:
+        x = x[:limit]
+        y = y[:limit]
+    x = x.reshape(len(x), 1, 28, 28)
+    x = x.astype("float32") / 255
+    y = utils.to_categorical(y)
+    if ones_and_zeros:
+        y = y.reshape(len(y), 2, 1)
+    else:
+        y = y.reshape(len(y), 10, 1)
+    return x, y
+
+
+def predict(network, input):
+    output = input
+    for layer in network:
+        output = layer.forward(output)
+    return output
+
+def train(network, loss, loss_prime, x_train, y_train, epochs = 1000, learning_rate = 0.01, verbose = True):
+    error_list = []
+    for e in range(epochs):
+        error = 0
+        i = 1
+        start = time.time()
+        for  x, y in zip(x_train, y_train):
+            # forward
+            output = predict(network, x)
+
+            # error
+            error += loss(y, output)
+
+            # backward
+            grad = loss_prime(y, output)
+            for layer in reversed(network):
+                grad = layer.backward(grad, learning_rate)
+            if verbose and i %100==0:
+                print(f"{i}/{len(x_train)} : {time.time()-start:.3f} seconds : {error/i:.4f} error")
+                start = time.time()
+            i+=1
+
+
+        error /= len(x_train)
+        error_list.append(error)
+        if verbose:
+            print(f"{e + 1}/{epochs}, error={error}")
+
+    return error_list
 
 x_train, y_train = preprocess_data(x_train, y_train, 100, ones_and_zeros = True)
 x_test, y_test = preprocess_data(x_test, y_test, 8000, ones_and_zeros = True)
