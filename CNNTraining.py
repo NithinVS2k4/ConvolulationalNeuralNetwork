@@ -133,7 +133,6 @@ if training:
         save_network_numpy(network, f'NeuralNetworkModular/{prefix}/digit_recog_NN')
 
 score = 0
-error = 0
 distribution = [0,0]
 for x, y in zip(x_test, y_test):
     output = predict(network, x)
@@ -146,6 +145,6 @@ for x, y in zip(x_test, y_test):
 print(f"Accuracy : {100*score/len(x_test)}%")
 print(f"Distribution : {distribution}")
 
-
-plt.plot(error_list)
-plt.show()
+if training:
+    plt.plot(error_list)
+    plt.show()
